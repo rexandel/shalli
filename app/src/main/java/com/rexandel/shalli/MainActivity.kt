@@ -1,8 +1,12 @@
 package com.rexandel.shalli
 
 import android.os.Bundle
+import android.view.View
+import android.view.inputmethod.InputMethodManager
+import android.widget.EditText
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -18,9 +22,6 @@ class MainActivity : AppCompatActivity() {
         R.drawable.saint_petersburg
     )
 
-    private var index = 0
-
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -33,12 +34,9 @@ class MainActivity : AppCompatActivity() {
         binding.apply {
             cityWeather.layoutManager = LinearLayoutManager(this@MainActivity)
             cityWeather.adapter = adapter
-            addCityCard.setOnClickListener {
-                if (index > 2) index = 0
 
-                val cityCard = CityCard(imageIdList[index], "City ${index+1}")
-                adapter.addCityCard(cityCard)
-                index++
+            addCityCard.setOnClickListener {
+                showAddCityDialog()
             }
             cityWeather.setHasFixedSize(true)
         }
@@ -57,5 +55,48 @@ class MainActivity : AppCompatActivity() {
 
             insets
         }
+    }
+
+    fun showAddCityDialog() {
+        binding.dialogContainer.visibility = View.VISIBLE
+        binding.dialogContainer.alpha = 0f
+
+        supportFragmentManager
+            .beginTransaction()
+            .replace(R.id.dialogContainer, AddCityCardFragment.newInstance())
+            .commit()
+
+        binding.dialogContainer.animate()
+            .alpha(1f)
+            .setDuration(200)
+            .setListener(null)
+            .start()
+    }
+
+    fun hideDialogContainer() {
+        binding.dialogContainer.animate()
+            .alpha(0f)
+            .setDuration(200)
+            .withEndAction {
+                binding.dialogContainer.visibility = View.GONE
+                binding.dialogContainer.alpha = 1f
+            }
+            .start()
+    }
+
+    fun addCityCard(cityName: String) {
+        val randomImage = imageIdList.random()
+        val cityCard = CityCard(randomImage, cityName)
+        adapter.addCityCard(cityCard)
+    }
+
+    fun hideKeyboard() {
+        val imm = getSystemService(InputMethodManager::class.java)
+        imm.hideSoftInputFromWindow(binding.root.windowToken, 0)
+    }
+
+    fun showKeyboard(editText: EditText) {
+        val imm = getSystemService(InputMethodManager::class.java)
+        imm?.showSoftInput(editText, InputMethodManager.SHOW_IMPLICIT)
     }
 }
