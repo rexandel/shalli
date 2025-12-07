@@ -4,7 +4,9 @@ import android.os.Bundle
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
@@ -12,10 +14,12 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.rexandel.shalli.databinding.ActivityMainBinding
+import com.rexandel.shalli.weather.WeatherViewModel
 
 class MainActivity : AppCompatActivity() {
     lateinit var binding: ActivityMainBinding
     private val adapter = CityCardAdapter()
+    private val weatherViewModel: WeatherViewModel by viewModels()
     private val imageIdList = listOf(
         R.drawable.krasnodar,
         R.drawable.moscow,
@@ -28,6 +32,7 @@ class MainActivity : AppCompatActivity() {
         enableEdgeToEdge()
         setContentView(binding.root)
         init()
+        observeWeatherData()
     }
 
     private fun init() {
@@ -57,6 +62,30 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun observeWeatherData() {
+        weatherViewModel.weatherData.observe(this) { (cityName, weatherData) ->
+            adapter.updateCityCardWeather(cityName, weatherData)
+        }
+
+        weatherViewModel.isLoading.observe(this) { isLoading ->
+            // Show/hide the loading indicator
+        }
+
+        weatherViewModel.errorMessage.observe(this) { error ->
+            if (error.isNotEmpty()) {
+                Toast.makeText(this, error, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    fun addCityCard(cityName: String) {
+        val randomImage = imageIdList.random()
+        val cityCard = CityCard(randomImage, cityName)
+        adapter.addCityCard(cityCard)
+
+        weatherViewModel.fetchWeatherByCity(cityName)
+    }
+
     fun showAddCityDialog() {
         binding.dialogContainer.visibility = View.VISIBLE
         binding.dialogContainer.alpha = 0f
@@ -82,12 +111,6 @@ class MainActivity : AppCompatActivity() {
                 binding.dialogContainer.alpha = 1f
             }
             .start()
-    }
-
-    fun addCityCard(cityName: String) {
-        val randomImage = imageIdList.random()
-        val cityCard = CityCard(randomImage, cityName)
-        adapter.addCityCard(cityCard)
     }
 
     fun hideKeyboard() {
