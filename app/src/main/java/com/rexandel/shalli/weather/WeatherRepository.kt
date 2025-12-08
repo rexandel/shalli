@@ -1,55 +1,53 @@
 package com.rexandel.shalli.weather
 
-import android.util.Log
 import java.io.IOException
 import com.rexandel.shalli.BuildConfig
+import retrofit2.HttpException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 
 class WeatherRepository {
-    private val apiService = RetrofitClient.weatherApiService
-    private val apiKey = BuildConfig.API_KEY
+    private val apiService = WeatherRetrofitClient.weatherApiService
+    private val apiKey = BuildConfig.WEATHER_API_KEY
 
     suspend fun getWeatherData(city: String): Result<WeatherResponse> {
-        Log.d("WeatherRepo", "Starting weather request for city: $city")
-
         return try {
             val response = apiService.getCurrentWeather(city, apiKey)
-            Log.d("WeatherRepo", "Response received. Code: ${response.code()}")
 
             if (response.isSuccessful) {
                 response.body()?.let { weatherResponse ->
-                    Log.i("WeatherRepo", "Weather for $city: ${weatherResponse.current.tempC}°C, ${weatherResponse.current.condition.text}")
                     Result.success(weatherResponse)
                 } ?: run {
-                    Log.w("WeatherRepo", "Empty response body for city: $city")
-                    Result.failure(Exception("Empty response from server"))
+                    Result.failure(Exception("No weather data available for $city"))
                 }
             } else {
-                val errorMessage = response.errorBody()?.use { errorBody ->
-                    try {
-                        val errorText = errorBody.string()
-                        when (response.code()) {
-                            400 -> "Invalid city name"
-                            401 -> "Invalid API key"
-                            404 -> "City '$city' not found"
-                            429 -> "Too many requests. Please wait"
-                            else -> "Error ${response.code()}: $errorText"
-                        }
-                    } catch (e: IOException) {
-                        "Error ${response.code()}: ${response.message()}"
-                    }
-                } ?: "Error ${response.code()}: ${response.message()}"
-
-                Log.e("WeatherRepo", "Error for $city: $errorMessage")
-                Result.failure(Exception(errorMessage))
+                handleErrorResponse(response.code(), city)
             }
+        } catch (e: SocketTimeoutException) {
+            Result.failure(Exception("Connection timeout. Please check your internet and try again"))
+        } catch (e: UnknownHostException) {
+            Result.failure(Exception("No internet connection. Please check your network"))
         } catch (e: IOException) {
-            Log.e("WeatherRepo", "Network error for $city", e)
-            Result.failure(Exception("No internet connection: ${e.localizedMessage}"))
+            Result.failure(Exception("Network error: ${e.localizedMessage}"))
+        } catch (e: HttpException) {
+            Result.failure(Exception("Server error: ${e.message}"))
         } catch (e: Exception) {
-            Log.e("WeatherRepo", "Unexpected error for $city", e)
-            Result.failure(Exception("Error: ${e.localizedMessage}"))
-        } finally {
-            Log.d("WeatherRepo", "Request completed for $city")
+            Result.failure(Exception("Failed to load weather: ${e.localizedMessage}"))
         }
+    }
+
+    private fun handleErrorResponse(code: Int, city: String): Result<WeatherResponse> {
+        val errorMessage = when (code) {
+            400 -> "Invalid city name: $city"
+            401 -> "Invalid API key. Please check configuration"
+            403 -> "Access forbidden. Please check API permissions"
+            404 -> "City '$city' not found"
+            429 -> "Too many requests. Please wait before trying again"
+            500 -> "Weather server error. Please try again later"
+            503 -> "Weather service unavailable"
+            else -> "Error $code: Failed to get weather for $city"
+        }
+
+        return Result.failure(Exception(errorMessage))
     }
 }

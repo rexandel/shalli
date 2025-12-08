@@ -8,23 +8,16 @@ import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.rexandel.shalli.databinding.ActivityMainBinding
-import com.rexandel.shalli.weather.WeatherViewModel
 
 class MainActivity : AppCompatActivity() {
     lateinit var binding: ActivityMainBinding
     private val adapter = CityCardAdapter()
-    private val weatherViewModel: WeatherViewModel by viewModels()
-    private val imageIdList = listOf(
-        R.drawable.krasnodar,
-        R.drawable.moscow,
-        R.drawable.saint_petersburg
-    )
+    private val appViewModel: AppViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,13 +26,14 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         init()
         observeWeatherData()
+        observeCityPhotos()
+        observeErrors()
     }
 
     private fun init() {
         binding.apply {
             cityWeather.layoutManager = LinearLayoutManager(this@MainActivity)
             cityWeather.adapter = adapter
-
             addCityCard.setOnClickListener {
                 showAddCityDialog()
             }
@@ -50,28 +44,25 @@ class MainActivity : AppCompatActivity() {
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-
-            view.setPadding(
-                systemBars.left,
-                systemBars.top,
-                systemBars.right,
-                systemBars.bottom
-            )
-
+            view.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
     }
 
     private fun observeWeatherData() {
-        weatherViewModel.weatherData.observe(this) { (cityName, weatherData) ->
+        appViewModel.weatherData.observe(this) { (cityName, weatherData) ->
             adapter.updateCityCardWeather(cityName, weatherData)
         }
+    }
 
-        weatherViewModel.isLoading.observe(this) { isLoading ->
-            // Show/hide the loading indicator
+    private fun observeCityPhotos() {
+        appViewModel.cityPhotoUrl.observe(this) { (cityName, photoUrl) ->
+            adapter.updateCityCardPhoto(cityName, photoUrl)
         }
+    }
 
-        weatherViewModel.errorMessage.observe(this) { error ->
+    private fun observeErrors() {
+        appViewModel.errorMessage.observe(this) { error ->
             if (error.isNotEmpty()) {
                 Toast.makeText(this, error, Toast.LENGTH_SHORT).show()
             }
@@ -79,11 +70,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun addCityCard(cityName: String) {
-        val randomImage = imageIdList.random()
-        val cityCard = CityCard(randomImage, cityName)
+        val cityCard = CityCard(cityName)
         adapter.addCityCard(cityCard)
-
-        weatherViewModel.fetchWeatherByCity(cityName)
+        appViewModel.fetchWeatherByCity(cityName)
     }
 
     fun showAddCityDialog() {
@@ -98,7 +87,6 @@ class MainActivity : AppCompatActivity() {
         binding.dialogContainer.animate()
             .alpha(1f)
             .setDuration(200)
-            .setListener(null)
             .start()
     }
 

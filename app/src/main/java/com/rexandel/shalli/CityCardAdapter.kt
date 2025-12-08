@@ -4,6 +4,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
+import coil.load
+import coil.request.CachePolicy
 import com.rexandel.shalli.databinding.CityCardBinding
 
 class CityCardAdapter : RecyclerView.Adapter<CityCardAdapter.CityCardHolder>() {
@@ -13,8 +15,22 @@ class CityCardAdapter : RecyclerView.Adapter<CityCardAdapter.CityCardHolder>() {
         val binding = CityCardBinding.bind(item)
 
         fun bind(cityCard: CityCard) = with(binding) {
-            cityImage.setImageResource(cityCard.cityImageId)
             cityTitle.text = cityCard.cityTitle
+
+            val photoUrl = cityCard.photoUrl
+
+            if (photoUrl != null && photoUrl.isNotEmpty()) {
+                cityImage.load(photoUrl) {
+                    crossfade(true)
+                    placeholder(R.drawable.base_city)
+                    error(R.drawable.base_city)
+                    memoryCachePolicy(CachePolicy.ENABLED)
+                    diskCachePolicy(CachePolicy.ENABLED)
+                    size(160, 160)
+                }
+            } else {
+                cityImage.setImageResource(R.drawable.base_city)
+            }
 
             cityCard.weatherData?.let { weather ->
                 temperature.text = "${weather.temperature}°C"
@@ -62,7 +78,17 @@ class CityCardAdapter : RecyclerView.Adapter<CityCardAdapter.CityCardHolder>() {
     fun updateCityCardWeather(cityName: String, weatherData: WeatherData) {
         val index = cityCardList.indexOfFirst { it.cityTitle.equals(cityName, ignoreCase = true) }
         if (index != -1) {
-            cityCardList[index] = cityCardList[index].copy(weatherData = weatherData)
+            val currentCard = cityCardList[index]
+            cityCardList[index] = currentCard.copy(weatherData = weatherData)
+            notifyItemChanged(index)
+        }
+    }
+
+    fun updateCityCardPhoto(cityName: String, photoUrl: String) {
+        val index = cityCardList.indexOfFirst { it.cityTitle.equals(cityName, ignoreCase = true) }
+        if (index != -1) {
+            val currentCard = cityCardList[index]
+            cityCardList[index] = currentCard.copy(photoUrl = photoUrl)
             notifyItemChanged(index)
         }
     }

@@ -1,9 +1,9 @@
 package com.rexandel.shalli
 
 data class CityCard(
-    val cityImageId: Int,
     val cityTitle: String,
-    var weatherData: WeatherData? = null
+    var weatherData: WeatherData? = null,
+    var photoUrl: String? = null
 )
 
 data class WeatherData(
